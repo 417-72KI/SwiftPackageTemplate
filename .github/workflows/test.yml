@@ -15,37 +15,37 @@ jobs:
     name: Create matrix
     runs-on: ubuntu-latest
     outputs:
-      xcode-versions: ${{ steps.extract-matrix.outputs.xcode-versions }}
-      latest: ${{ steps.extract-matrix.outputs.latest-xcode-version }}
+      versions: ${{ steps.extract-matrix.outputs.versions }}
+      latest-macos-runner: ${{ steps.extract-matrix.outputs.latest-macos-runner }}
+      latest-xcode-version: ${{ steps.extract-matrix.outputs.latest-xcode-version }}
       swift-versions: ${{ steps.extract-matrix.outputs.swift-versions }}
       platforms: ${{ steps.extract-matrix.outputs.platforms }}
     steps:
       - uses: actions/checkout@v4
       - id: extract-matrix
         run: |
-          echo "xcode-versions=$(cat .github/matrix.json | jq -rc '.xcode_version')" >> $GITHUB_OUTPUT
-          echo "latest-xcode-version=$(cat .github/matrix.json | jq -r '.xcode_version | max')" >> $GITHUB_OUTPUT
+          echo "versions=$(cat .github/matrix.json | jq -rc '.versions | map(.macos_runner as $macos_runner | .xcode as $xcode | .destination | map({ macos_runner: $macos_runner, xcode: $xcode, destination: . })) | flatten')" >> $GITHUB_OUTPUT
+          echo "latest-macos-runner=$(cat .github/matrix.json | jq -rc '.versions | map(.macos_runner) | max')" >> $GITHUB_OUTPUT
+          echo "latest-xcode-version=$(cat .github/matrix.json | jq -r '.versions | map(.xcode) | max')" >> $GITHUB_OUTPUT
           echo "swift-versions=$(cat .github/matrix.json | jq -rc '.swift_version')" >> $GITHUB_OUTPUT
-          echo "platforms=$(cat .github/matrix.json | jq -rc '.platform')" >> $GITHUB_OUTPUT
   test-macos:
     name: Test
     needs: extract-matrix
-    runs-on: macos-14
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.extract-matrix.outputs.versions) }}
+      fail-fast: false
+    runs-on: macos-${{ matrix.macos_runner }}
     concurrency:
       group: ${{ github.head_ref }}-${{ github.workflow }}-${{ matrix.xcode }}-${{ matrix.destination }}
       cancel-in-progress: true
-    strategy:
-      matrix:
-        xcode: ${{ fromJson(needs.extract-matrix.outputs.xcode-versions) }}
-        destination: ${{ fromJson(needs.extract-matrix.outputs.platforms) }}
-      fail-fast: false
     env:
       DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
       - id: create-destination-key
         name: Create destination key for cache
-        run: echo "destination-key=$(echo "${{ matrix.destination }}" | sed -r 's/[, ]/_/g')" >> $GITHUB_OUTPUT
+        run: echo "destination-key=$(echo "xcode_${{ matrix.xcode }}-${{ matrix.destination }}" | sed -r 's/[, ]/_/g')" >> $GITHUB_OUTPUT
       - uses: actions/cache@v4
         with:
           path: |
@@ -63,14 +63,14 @@ jobs:
           set -o pipefail && \
           xcrun xcodebuild \
             -enableCodeCoverage YES \
-            -scheme "$(xcodebuild -list -json | jq -rc '.workspace.schemes[0]')" \
+            -scheme "$(xcodebuild -list -json | jq -rc '.workspace.name')" \
             -destination "${{ matrix.destination }}" \
             -derivedDataPath '.build' \
             -resultBundlePath 'test_output/TestResult.xcresult' \
             clean test | xcpretty
       - name: Upload test result
         uses: actions/upload-artifact@v4
-        if: ${{ matrix.xcode }} == ${{ needs.extract-matrix.outputs.latest }} && (success() || failure())
+        if: ${{ matrix.xcode }} == ${{ needs.extract-matrix.outputs.latest-xcode-version }} && (success() || failure())
         with:
           name: ${{ steps.create-destination-key.outputs.destination-key }}
           path: test_output
@@ -78,8 +78,8 @@ jobs:
           retention-days: 1
   xcodebuild_result:
     name: Export xcodebuild test result
-    needs: test-macos
-    runs-on: macOS-14
+    needs: [extract-matrix, test-macos]
+    runs-on: macOS-${{ needs.extract-matrix.outputs.latest-macos-runner }}
     steps:
       - uses: actions/download-artifact@v4
         with:
