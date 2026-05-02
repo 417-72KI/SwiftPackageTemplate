@@ -21,7 +21,7 @@ jobs:
       swift-versions: ${{ steps.extract-matrix.outputs.swift-versions }}
       platforms: ${{ steps.extract-matrix.outputs.platforms }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - id: extract-matrix
         run: |
           echo "versions=$(cat .github/matrix.json | jq -rc '.versions | map(.macos_runner as $macos_runner | .xcode as $xcode | .destination | map({ macos_runner: $macos_runner, xcode: $xcode, destination: . })) | flatten')" >> $GITHUB_OUTPUT
@@ -42,11 +42,11 @@ jobs:
     env:
       DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - id: create-destination-key
         name: Create destination key for cache
         run: echo "destination-key=$(echo "xcode_${{ matrix.xcode }}-${{ matrix.destination }}" | sed -r 's/[, ]/_/g')" >> $GITHUB_OUTPUT
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             .build/SourcePackages/checkouts
@@ -69,7 +69,7 @@ jobs:
             -resultBundlePath 'test_output/TestResult.xcresult' \
             clean test | xcpretty
       - name: Upload test result
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ matrix.xcode }} == ${{ needs.extract-matrix.outputs.latest-xcode-version }} && (success() || failure())
         with:
           name: ${{ steps.create-destination-key.outputs.destination-key }}
@@ -81,13 +81,13 @@ jobs:
     needs: [extract-matrix, test-macos]
     runs-on: macOS-${{ needs.extract-matrix.outputs.latest-macos-runner }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: test_output
       - name: Merge xcresult files
         run:
           xcrun xcresulttool merge test_output/**/*.xcresult --output-path test_output/TestResults.xcresult
-      - uses: slidoapp/xcresulttool@v3.1.0
+      - uses: slidoapp/xcresulttool@9c51e32ae0320e0ca9b63240e4da8e974ac573e3 # v3.1.0
         if: success() || failure()
         with:
           path: test_output/TestResults.xcresult
@@ -107,8 +107,8 @@ jobs:
         swift: ${{ fromJson(needs.extract-matrix.outputs.swift-versions) }}
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             .build/artifacts
