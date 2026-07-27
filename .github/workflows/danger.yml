@@ -13,7 +13,7 @@ jobs:
       group: ${{ github.head_ref }}-${{ github.workflow }}
       cancel-in-progress: true
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Danger
         uses: 417-72KI/danger-swiftlint@cede6b054f0974088af775b7843437f4b14dc33e # v6.3
         env:
