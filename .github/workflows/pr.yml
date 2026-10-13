@@ -52,6 +52,9 @@ jobs:
         run: |
           defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES
           defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
+      - name: Set up test package when repository is a template
+        if: ${{ github.event.repository.is_template }}
+        run: swift package init
       - name: test
         run: |
           defaults write com.apple.dt.XCBuild EnableSwiftBuildSystemIntegration 1
@@ -113,6 +116,9 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.swift }}-${{ hashFiles('Package.swift') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.swift }}-
+      - name: Set up test package when repository is a template
+        if: ${{ github.event.repository.is_template }}
+        run: swift package init
       - name: test
         run: swift test
   danger:
