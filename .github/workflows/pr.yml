@@ -55,6 +55,13 @@ jobs:
       - name: Set up test package when repository is a template
         if: ${{ github.event.repository.is_template }}
         run: swift package init
+      - name: Preboot iPhone 18 Pro simulator # Ref: https://github.com/actions/runner-images/issues/12777
+        if: ${{ startsWith(matrix.xcode, '27') && endsWith(matrix.destination, 'name=iPhone 18 Pro') }}
+        run: |
+          xcrun simctl boot "iPhone 18 Pro" || true
+          echo "Waiting for simulator to finish booting..."
+          xcrun simctl bootstatus "iPhone 18 Pro"
+          xcrun simctl list > /dev/null
       - name: test
         run: |
           defaults write com.apple.dt.XCBuild EnableSwiftBuildSystemIntegration 1
